@@ -20,7 +20,7 @@ st.set_page_config(
 )
 
 # SQLite connection
-conn = sqlite3.connect('user_credentials.db')
+conn = sqlite3.connect('Crime_whiz.db')
 cursor = conn.cursor()
 
 # Create a table to store user credentials if it doesn't exist
@@ -46,17 +46,22 @@ cursor.execute('''
     CREATE TABLE IF NOT EXISTS predictions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT,
-        prediction_text TEXT
+        prediction_text TEXT,
+        prediction TEXT
     )
 ''')
 conn.commit()
+
+
 # Function to hash passwords
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
+
 # Function to verify passwords
 def verify_password(entered_password, hashed_password):
     return hashlib.sha256(entered_password.encode()).hexdigest() == hashed_password
+
 
 # Load Catboost model
 with open('catboost_model.pkl', 'rb') as model_file:
@@ -155,7 +160,6 @@ navigation_option = st.sidebar.selectbox("Select Option", ["Make Predictions", "
 # Main Section - Predictions and Map
 st.title(":blue[Chicago CrimeWiz] 👮")
 
-
 # Check if the user is logged in before allowing access to predictions and map
 if getattr(st.session_state, 'logged_in', False):
 
@@ -247,6 +251,7 @@ if getattr(st.session_state, 'logged_in', False):
         folium_static(m)
 
         # Predictions Button
+        predictions = []
         if st.button("See Predictions"):
             # Add a loading spinner
             with st.spinner('Making Predictions...'):
@@ -256,13 +261,15 @@ if getattr(st.session_state, 'logged_in', False):
                 predictions = catboost_model.predict(preprocessed_input)
                 if predictions[0] == 1:
                     # Display the predictions
-                    st.write("Predictions for {} in {}: A Violent Crime can happen".format(selected_date, selected_location))
+                    st.write(
+                        "Predictions for {} in {}: A Violent Crime can happen".format(selected_date, selected_location))
                 else:
-                    st.write("Predictions for {} in {}: A Violent Crime may not happen".format(selected_date, selected_location))
+                    st.write("Predictions for {} in {}: A Violent Crime may not happen".format(selected_date,
+                                                                                               selected_location))
 
         # Save predictions to the database ****CHECK THIS PART****
-        insert_prediction_query = "INSERT INTO predictions (username, prediction_text) VALUES (?, ?)"
-        prediction_values = (username, f"Predictions for {selected_date} in {selected_location}: {predictions[0]}")
+        insert_prediction_query = "INSERT INTO predictions (username, prediction_text, prediction) VALUES (?, ?,?)"
+        prediction_values = (username, f" {selected_date} in {selected_location}", f"{predictions[0]}")
 
         cursor.execute(insert_prediction_query, prediction_values)
         conn.commit()
@@ -274,10 +281,20 @@ if getattr(st.session_state, 'logged_in', False):
         cursor.execute(prediction_query)
         prediction_results = cursor.fetchall()
 
+        # for prediction in prediction_results:
+        #     st.write(f"Username: {prediction[1]}")
+        #     st.write(f"Prediction: {prediction[2]}")
+        #     st.write(f"   {prediction[3]}")
+        #     st.write("------")
+
+        # Display predictions in a table
+        prediction_table = [["Username", "Date And Location", "Prediction"]]
         for prediction in prediction_results:
-            st.write(f"Username: {prediction[1]}")
-            st.write(f"Prediction: {prediction[2]}")
-            st.write("------")
+            prediction_table.append([prediction[1], prediction[2], prediction[3]])
+
+        st.table(prediction_table)
+
+
 
 
     elif navigation_option == "Data Analysis":
