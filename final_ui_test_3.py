@@ -220,6 +220,7 @@ if getattr(st.session_state, 'logged_in', False):
         st.subheader("Make Prediction Section")
         # User Inputs
         selected_date = st.date_input("Select Date")
+        selected_beat = st.number_input("Enter Your Beat", step=1, value=0, format="%d")
         selected_location = st.selectbox("Select Location", list_of_districts_in_chicago)
 
         # Retrieve latitude and longitude for the selected location
